@@ -18,8 +18,8 @@ public class Main {
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(1000, 700);
 
-            DrawingPanel drawingPanel = new DrawingPanel();
-            frame.add(drawingPanel, BorderLayout.CENTER);
+            CanvasArea canvasArea = new CanvasArea();
+            frame.add(canvasArea, BorderLayout.CENTER);
 
             // コントロールパネルを作成
             JPanel controlPanel = new JPanel();
@@ -29,11 +29,11 @@ public class Main {
             // 描画モード切り替えボタン
             JButton drawButton = createButton("Brush: Small", new Color(173, 216, 230));
             drawButton.addActionListener(e -> {
-                if (!drawingPanel.isEraserMode()) {
-                    drawingPanel.toggleDrawSize();
-                    drawButton.setText("Brush: " + drawingPanel.getDrawSizeLabel());
+                if (!canvasArea.isEraserMode()) {
+                    canvasArea.togglePenSize();
+                    drawButton.setText("Brush: " + canvasArea.getPenSizeLabel());
                 } else {
-                    drawingPanel.setEraserMode(false);
+                    canvasArea.setEraserMode(false);
                     System.out.println("Switched to brush mode");
                 }
             });
@@ -42,11 +42,11 @@ public class Main {
             // 消しゴムモード切り替えボタン
             JButton eraserButton = createButton("Eraser: Small", new Color(240, 128, 128));
             eraserButton.addActionListener(e -> {
-                if (drawingPanel.isEraserMode()) {
-                    drawingPanel.toggleEraserSize();
-                    eraserButton.setText("Eraser: " + drawingPanel.getEraserSizeLabel());
+                if (canvasArea.isEraserMode()) {
+                    canvasArea.toggleEraserWidth();
+                    eraserButton.setText("Eraser: " + canvasArea.getEraserSizeLabel());
                 } else {
-                    drawingPanel.setEraserMode(true);
+                    canvasArea.setEraserMode(true);
                     System.out.println("Switched to eraser mode");
                 }
             });
@@ -55,7 +55,7 @@ public class Main {
             // テキストボックス追加ボタン
             JButton textButton = createButton("Add Text", new Color(255, 228, 196));
             textButton.addActionListener(e -> {
-                drawingPanel.addTextBox();
+                canvasArea.addTextItem();
                 System.out.println("Text box added");
             });
             controlPanel.add(textButton);
@@ -63,9 +63,9 @@ public class Main {
             // 色変更ボタン
             JButton colorButton = createButton("Color Change", new Color(144, 238, 144));
             colorButton.addActionListener(e -> {
-                Color newColor = JColorChooser.showDialog(frame, "Choose Color", drawingPanel.getDrawColor());
+                Color newColor = JColorChooser.showDialog(frame, "Choose Color", canvasArea.getPenColor());
                 if (newColor != null) {
-                    drawingPanel.setDrawColor(newColor);
+                    canvasArea.setPenColor(newColor);
                     System.out.println("Color changed");
                 }
             });
@@ -74,7 +74,7 @@ public class Main {
             // 全消去ボタン
             JButton clearButton = createButton("All Delete", new Color(255, 182, 193));
             clearButton.addActionListener(e -> {
-                drawingPanel.clearBoard();
+                canvasArea.clearCanvas();
                 System.out.println("Board cleared");
             });
             controlPanel.add(clearButton);
@@ -95,16 +95,16 @@ public class Main {
     }
 }
 
-class DrawingPanel extends JPanel {
-    private List<Line> lines = new ArrayList<>();
-    private List<JPanel> textBoxes = new ArrayList<>();
-    private Color drawColor = Color.BLACK;
-    private boolean isEraser = false;
-    private int drawSize = 1;
-    private int eraserSize = 10;
+class CanvasArea extends JPanel {
+    private List<Line> drawnLines = new ArrayList<>();
+    private List<JPanel> textItems = new ArrayList<>();
+    private Color penColor = Color.BLACK;
+    private boolean eraserMode = false;
+    private int penSize = 1;
+    private int eraserWidth = 10;
     private int lastX, lastY;
 
-    public DrawingPanel() {
+    public CanvasArea() {
         setLayout(null); // レイアウトを手動管理
         setBackground(Color.WHITE);
 
@@ -119,24 +119,26 @@ class DrawingPanel extends JPanel {
         addMouseMotionListener(new MouseAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                int x = e.getX();
-                int y = e.getY();
-                if (isEraser) {
-                    lines.add(new Line(lastX, lastY, x, y, Color.WHITE, eraserSize));
-                } else {
-                    lines.add(new Line(lastX, lastY, x, y, drawColor, drawSize));
-                }
-                lastX = x;
-                lastY = y;
-                repaint();
+                onMouseMove(e.getX(), e.getY());
             }
         });
+    }
+
+    private void onMouseMove(int x, int y) {
+        if (eraserMode) {
+            drawnLines.add(new Line(lastX, lastY, x, y, Color.WHITE, eraserWidth));
+        } else {
+            drawnLines.add(new Line(lastX, lastY, x, y, penColor, penSize));
+        }
+        lastX = x;
+        lastY = y;
+        repaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        for (Line line : lines) {
+        for (Line line : drawnLines) {
             g.setColor(line.color);
             if (line.thickness > 1) {
                 Graphics2D g2d = (Graphics2D) g;
@@ -149,55 +151,55 @@ class DrawingPanel extends JPanel {
         }
     }
 
-    public void setDrawColor(Color color) {
-        this.drawColor = color;
+    public void setPenColor(Color color) {
+        this.penColor = color;
     }
 
-    public Color getDrawColor() {
-        return this.drawColor;
+    public Color getPenColor() {
+        return this.penColor;
     }
 
     public boolean isEraserMode() {
-        return isEraser;
+        return eraserMode;
     }
 
-    public void setEraserMode(boolean isEraser) {
-        this.isEraser = isEraser;
+    public void setEraserMode(boolean mode) {
+        this.eraserMode = mode;
     }
 
-    public void toggleDrawSize() {
-        if (drawSize == 1) {
-            drawSize = 3;
-        } else if (drawSize == 3) {
-            drawSize = 5;
+    public void togglePenSize() {
+        if (penSize == 1) {
+            penSize = 3;
+        } else if (penSize == 3) {
+            penSize = 5;
         } else {
-            drawSize = 1;
+            penSize = 1;
         }
     }
 
-    public String getDrawSizeLabel() {
-        return drawSize == 1 ? "Small" : drawSize == 3 ? "Medium" : "Large";
+    public String getPenSizeLabel() {
+        return penSize == 1 ? "Small" : penSize == 3 ? "Medium" : "Large";
     }
 
-    public void toggleEraserSize() {
-        if (eraserSize == 10) {
-            eraserSize = 20;
-        } else if (eraserSize == 20) {
-            eraserSize = 40;
+    public void toggleEraserWidth() {
+        if (eraserWidth == 10) {
+            eraserWidth = 20;
+        } else if (eraserWidth == 20) {
+            eraserWidth = 40;
         } else {
-            eraserSize = 10;
+            eraserWidth = 10;
         }
     }
 
     public String getEraserSizeLabel() {
-        return eraserSize == 10 ? "Small" : eraserSize == 20 ? "Medium" : "Large";
+        return eraserWidth == 10 ? "Small" : eraserWidth == 20 ? "Medium" : "Large";
     }
 
-    public void addTextBox() {
-        JPanel textBox = new JPanel();
-        textBox.setLayout(null);
-        textBox.setBounds(50, 50, 200, 50);
-        textBox.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+    public void addTextItem() {
+        JPanel textItem = new JPanel();
+        textItem.setLayout(null);
+        textItem.setBounds(50, 50, 200, 50);
+        textItem.setBorder(BorderFactory.createLineBorder(Color.GRAY));
 
         // テキストフィールド
         JTextField textField = new JTextField("Text");
@@ -207,8 +209,8 @@ class DrawingPanel extends JPanel {
         JButton closeButton = new JButton("×");
         closeButton.setBounds(180, 0, 20, 20);
         closeButton.addActionListener(e -> {
-            remove(textBox);
-            textBoxes.remove(textBox);
+            remove(textItem);
+            textItems.remove(textItem);
             repaint();
             revalidate();
         });
@@ -225,31 +227,32 @@ class DrawingPanel extends JPanel {
             @Override
             public void mouseDragged(MouseEvent e) {
                 if (initialClick != null) {
-                    Point location = textBox.getLocation();
+                    Point location = textItem.getLocation();
                     int x = location.x + e.getX() - initialClick.x;
                     int y = location.y + e.getY() - initialClick.y;
-                    textBox.setLocation(x, y);
+                    textItem.setLocation(x, y);
                 }
             }
         };
 
-        textBox.addMouseListener(dragListener);
-        textBox.addMouseMotionListener(dragListener);
+        textItem.addMouseListener(dragListener);
+        textItem.addMouseMotionListener(dragListener);
 
-        textBox.add(textField);
-        textBox.add(closeButton);
-        textBoxes.add(textBox);
-        add(textBox);
+        textItem.add(textField);
+        textItem.add(closeButton);
+        textItems.add(textItem);
+
+        add(textItem);
         repaint();
         revalidate();
     }
 
-    public void clearBoard() {
-        lines.clear();
-        for (JPanel textBox : textBoxes) {
-            remove(textBox);
+    public void clearCanvas() {
+        drawnLines.clear();
+        for (JPanel textItem : textItems) {
+            remove(textItem);
         }
-        textBoxes.clear();
+        textItems.clear();
         repaint();
     }
 
